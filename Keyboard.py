@@ -10,6 +10,8 @@ import pynput
 import serial
 import sys
 import time
+import os
+
 
 
 root = Tk()
@@ -19,12 +21,14 @@ root.geometry('500x150')
 root.title('Keyboard Manager')
 root.iconbitmap('D:/Offline_Projects/Arduino/logo.ico')
 
+
+
 ####################Global Variables##################################
 filename = ''
 foldername = 'D:/'
 fields = []
 data = []
-clicked = StringVar()
+#clicked = StringVar()
 preprogramedCodeRow = 0
 ####################Global Variables##################################
 
@@ -167,7 +171,7 @@ def keystroke(keyboard, mouse, command, a):
     time.sleep(0.1)
   elif(command == 4):
     time.sleep(0.5)
-    keyboard.type(cmd(a))
+    keyboard.type(a)
     time.sleep(0.5)
   elif(command == 5):
     time.sleep(0.1)
@@ -232,7 +236,9 @@ def keypad():
 
 	      if(inp == 'N'):
 	            ser.close()
-	            sys.exit()
+	            os.system("python Keyboard.py " + filename)
+
+
 
 
 ############################################################
@@ -308,6 +314,27 @@ def create(name):
 
 
 
+def readFile(fileExploreLabel, displayGrid):
+  global filename, data
+  # Change label contents
+  fileExploreLabel.configure(text="Config File: "+filename)
+  fileExploreLabel.configure(font=('arial', 12, 'normal'))  
+
+  with open(filename, 'r') as csvfile:
+      while(True):
+          row = csvfile.readline()  
+          if(row == ''):
+              break
+          rows = row.split(',')
+          fields.append(rows)
+      
+      data = np.transpose(fields)
+  
+  for i in range(0,16):
+    displayGrid[i].configure(text = chr(ord('A') + i) + ":  " + data[(i*2)+1][1])
+
+
+
 ############################################################
 # Name: browseFiles
 # Arguments: 
@@ -323,29 +350,16 @@ def create(name):
 # Author: HimaSava
 ############################################################
 def browseFiles(fileExploreLabel, displayGrid):
-    global filename, data
+    global filename
     filename = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select a File",
                                           filetypes = (("Config files",
                                                         "*.csv*"),
                                                        ("all files",
                                                         "*.*")))
-    # Change label contents
-    fileExploreLabel.configure(text="Config File: "+filename)
-    fileExploreLabel.configure(font=('arial', 12, 'normal'))
     
-    with open(filename, 'r') as csvfile:
-        while(True):
-            row = csvfile.readline()  
-            if(row == ''):
-                break
-            rows = row.split(',')
-            fields.append(rows)
-        
-        data = np.transpose(fields)
-    
-    for i in range(0,16):
-    	displayGrid[i].configure(text = chr(ord('A') + i) + ":  " + data[(i*2)+1][1])
+    readFile(fileExploreLabel, displayGrid)
+
 
 
 ############################################################
@@ -359,7 +373,7 @@ def browseFiles(fileExploreLabel, displayGrid):
 #	config file. Also enable the modifyButton Frame
 # Author: HimaSava
 ############################################################
-def displayCode(preprogramedCodeFrame,modifyButtonFrame):
+def displayCode(preprogramedCodeFrame,modifyButtonFrame, clicked):
     
     global preprogramedCodeRow  
 
@@ -416,7 +430,7 @@ def addRow(preprogramedCodeFrame):
 #	the modifications done in the display grid
 # Author: HimaSava
 ############################################################
-def changeData(preprogramedCodeFrame):
+def changeData(preprogramedCodeFrame, clicked):
     global preprogramedCodeRow
 
     col = 2 * (ord(clicked.get()) - ord('A'))
@@ -434,14 +448,13 @@ def changeData(preprogramedCodeFrame):
 #	Save the updated data into the config file
 # Author: HimaSava
 ############################################################
-def saveData(preprogramedCodeFrame):
+def saveData(preprogramedCodeFrame,clicked):
     global data, fields
 
-    changeData(preprogramedCodeFrame)
+    changeData(preprogramedCodeFrame, clicked)
     fields = []
     changedData = []
     fields = np.transpose(data)
-    print('Hi') 
     for i in fields:
         changedData.append(','.join(i))
     with open(filename, 'w') as csvfile:
@@ -513,58 +526,62 @@ def screen1():
 # Author: HimaSava
 ############################################################
 def screen2():
-	clearAll()
-	screen0()
-	root.geometry('800x350')
+  global filename
+  clearAll()
+  screen0()
+  root.geometry('800x350')
 
-	configFrame = Frame(root, width = 500, height = 240)
-	configFrame.pack(pady=10)
-	configFrame.pack_propagate(0)
+  configFrame = Frame(root, width = 500, height = 240)
+  configFrame.pack(pady=10)
+  configFrame.pack_propagate(0)
 
-	#Display the Config File selection Row
-	configFileLabel = Label(configFrame, text='Select Config File:', font=('arial', 14, 'normal'))
+  #Display the Config File selection Row
+  configFileLabel = Label(configFrame, text='Select Config File:', font=('arial', 14, 'normal'))
 
-	#Open File Browser to select the file
-	fileExploreButton = Button(configFrame, text = "Browse Files", command = screen2)
-	
-	backButton = Button(configFrame, text = "Back", command = screen1)
+  #Open File Browser to select the file
+  fileExploreButton = Button(configFrame, text = "Browse Files", command = lambda: browseFiles(fileExploreLabel, displayGrid))
 
-	#Display the selected file
-	fileExploreLabel = Label(configFrame, text = "Config File Choosen:", font =('arial', 12, 'normal'))
-	
-	#Display the Labels and Buttons
-	configFileLabel.grid(row = 0, column = 0, sticky = 'W', padx = 10)
-	fileExploreButton.grid(row = 0, column = 1, sticky = 'W', padx = 10)
-	backButton.grid(row = 0, column = 2, sticky = 'W', padx = 10)
-	fileExploreLabel.grid(row = 1, column = 0, columnspan = 3, sticky = 'W', pady = 5)
+  
 
-	#Frame to display the comments for each button
-	commentFrame = Frame(root)
-	commentFrame.pack(pady=10)
+  #Display the selected file
+  fileExploreLabel = Label(configFrame, text = "Config File Choosen:", font =('arial', 12, 'normal'))
 
-	displayGrid = []
-	for i in range(0,16):
-		lab = Label(commentFrame, text = chr(ord('A') + i) , font =('arial', 12, 'normal'))
-		displayGrid.append(lab)
+  #Display the Labels and Buttons
+  configFileLabel.grid(row = 0, column = 0, sticky = 'W', padx = 10)
+  fileExploreButton.grid(row = 0, column = 1, sticky = 'W', padx = 10)
+  
+  fileExploreLabel.grid(row = 1, column = 0, columnspan = 3, sticky = 'W', pady = 5)
 
-	for i in range(0,16):
-		r = int(i/4)
-		c = int(i%4)
-		displayGrid[i].grid(row = r, column = c, sticky = 'W', padx = 2)	
-	
-	browseFiles(fileExploreLabel, displayGrid)
+  #Frame to display the comments for each button
+  commentFrame = Frame(root)
+  commentFrame.pack(pady=10)
 
-	#Frame to display the comments for each button
-	optionFrame = Frame(root)
-	optionFrame.pack(pady=10)
+  displayGrid = []
+  for i in range(0,16):
+  	lab = Label(commentFrame, text = chr(ord('A') + i) , font =('arial', 12, 'normal'))
+  	displayGrid.append(lab)
 
-	startButton = Button(optionFrame, text = "Start", command = startCode)
-	modifyButton = Button(optionFrame, text = "Modify", command = screen4)
-	backButton = Button(optionFrame, text = "Back", command = screen1)
+  for i in range(0,16):
+  	r = int(i/4)
+  	c = int(i%4)
+  	displayGrid[i].grid(row = r, column = c, sticky = 'W', padx = 2)	
 
-	startButton.grid(row = 0, column = 0, sticky = 'W', padx = 10)
-	modifyButton.grid(row = 0, column = 1, sticky = 'W', padx = 10)
-	backButton.grid(row = 0, column = 2, sticky = 'W', padx = 10)
+
+
+  #Frame to display the comments for each button
+  optionFrame = Frame(root)
+  optionFrame.pack(pady=10)
+
+  startButton = Button(optionFrame, text = "Start", command = startCode)
+  modifyButton = Button(optionFrame, text = "Modify", command = screen4)
+  backButton = Button(optionFrame, text = "Back", command = screen1)
+
+  startButton.grid(row = 0, column = 0, sticky = 'W', padx = 10)
+  modifyButton.grid(row = 0, column = 1, sticky = 'W', padx = 10)
+  backButton.grid(row = 0, column = 2, sticky = 'W', padx = 10)
+
+  if(filename != ''):
+    readFile(fileExploreLabel, displayGrid)
 
 
 
@@ -629,9 +646,9 @@ def screen4():
 	root.geometry('500x500')	
 	screen0()
 
-	preprogramedCodeFrame = Frame(root)
-
-	#Buttons to Modify the contents in the config file
+	clicked = StringVar()
+  
+	preprogramedCodeFrame = Frame(root)#Buttons to Modify the contents in the config file
 	modifyButtonFrame = Frame(root)
 
 	#Display the title for the new config wizard
@@ -656,7 +673,7 @@ def screen4():
 	clicked.set('A')
 	buttonMenu = OptionMenu(newConfigFrame, clicked, *options)
 
-	okButton = Button(newConfigFrame, text = "Select", command = lambda: displayCode(preprogramedCodeFrame, modifyButtonFrame))
+	okButton = Button(newConfigFrame, text = "Select", command = lambda: displayCode(preprogramedCodeFrame, modifyButtonFrame, clicked))
 
 	selectButtonLabel.grid(row = 0, column = 0, sticky = 'W', padx = 5)
 	buttonMenu.grid(row = 0, column = 1, columnspan = 2, sticky = 'W', padx = 5)
@@ -666,8 +683,8 @@ def screen4():
 	
 
 	addRowButton = Button(modifyButtonFrame, text = "Add Row", command = lambda: addRow(preprogramedCodeFrame))
-	changeDataButton = Button(modifyButtonFrame, text = "Change", command = lambda: changeData(preprogramedCodeFrame))
-	saveButton = Button(modifyButtonFrame, text = "Save", command = lambda: saveData(preprogramedCodeFrame))
+	changeDataButton = Button(modifyButtonFrame, text = "Change", command = lambda: changeData(preprogramedCodeFrame, clicked))
+	saveButton = Button(modifyButtonFrame, text = "Save", command = lambda: saveData(preprogramedCodeFrame,clicked))
 	backButton = Button(modifyButtonFrame, text = "Back", command = screen2)
 
 	addRowButton.grid(row = 0, column = 0, sticky = W,padx = 10)
@@ -675,11 +692,16 @@ def screen4():
 	saveButton.grid(row = 0, column = 2, sticky = W,padx = 10)
 	backButton.grid(row = 0, column = 3, sticky = W,padx = 10)
 
-
 def main():
-    screen1()
+    global filename
+    
+    if len(sys.argv)>1:
+      filename = sys.argv[1]
+      screen2()
+    else:
+      screen1()
+    
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
